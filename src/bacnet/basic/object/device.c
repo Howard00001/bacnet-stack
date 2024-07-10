@@ -74,6 +74,8 @@
 #include "bacnet/basic/object/color_object.h"
 #include "bacnet/basic/object/color_temperature.h"
 #endif
+// intri-core sync
+#include "bacnet/basic/service/coreSync.h"
 
 /* external prototypes */
 extern int Routed_Device_Read_Property_Local(BACNET_READ_PROPERTY_DATA *rpdata);
@@ -1547,6 +1549,9 @@ int Device_Read_Property(BACNET_READ_PROPERTY_DATA *rpdata)
 {
     int apdu_len = BACNET_STATUS_ERROR;
     struct object_functions *pObject = NULL;
+
+    /* intri-core sync */
+    sync_read(rpdata);
 
     /* initialize the default return values */
     rpdata->error_class = ERROR_CLASS_OBJECT;
