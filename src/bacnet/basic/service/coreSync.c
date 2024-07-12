@@ -207,26 +207,13 @@ void sync_read(BACNET_READ_PROPERTY_DATA *rpdata) {
     char *output = write_to_socket(msg);
     BACNET_CHARACTER_STRING char_string;
     if (strlen(output) != 0){
-        // write to bacnet stack
-        BACNET_WRITE_PROPERTY_DATA wp_data = {
-            .object_type = rpdata->object_type,
-            .object_instance = rpdata->object_instance,
-            .object_property = rpdata->object_property,
-            .priority = BACNET_NO_PRIORITY,
-            .array_index = rpdata->array_index,
-            .error_class = rpdata->error_class,
-            .error_code = rpdata->error_code
-            //.application_data //uint8_t[]
-        };
-
-        char *ret = processSocketOut(output);
-        characterstring_init_ansi(&char_string, ret);
-        encode_application_character_string(&wp_data.application_data, &char_string);
-        uint32_t i;
-        size_t length = characterstring_length(&char_string)+3;
-        wp_data.application_data_len = length;
-
-        Device_Write_Property_Internal(&wp_data);
+        switch (rpdata->object_type) {
+            case OBJECT_DEVICE:
+                Device_Write_Property_Internal(rpdata->object_property, output);
+                break;
+            default:
+                break;
+        }
     }
 }
 
