@@ -226,7 +226,7 @@ void sync_read(BACNET_READ_PROPERTY_DATA *rpdata) {
         size_t length = characterstring_length(&char_string)+3;
         wp_data.application_data_len = length;
 
-        Device_Write_Property(&wp_data);
+        Device_Write_Property_Internal(&wp_data);
     }
 }
 

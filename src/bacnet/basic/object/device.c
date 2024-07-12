@@ -547,11 +547,11 @@ void Device_Property_Lists(
 static uint32_t Object_Instance_Number = 260001;
 static BACNET_CHARACTER_STRING My_Object_Name;
 static BACNET_DEVICE_STATUS System_Status = STATUS_OPERATIONAL;
-static char *Vendor_Name = BACNET_VENDOR_NAME;
+static char Vendor_Name[MAX_DEV_NAME_LEN + 1] = BACNET_VENDOR_NAME;
 static uint16_t Vendor_Identifier = BACNET_VENDOR_ID;
 static char Model_Name[MAX_DEV_MOD_LEN + 1] = "GNU";
 static char Application_Software_Version[MAX_DEV_VER_LEN + 1] = "1.0";
-static const char *BACnet_Version = BACNET_VERSION_TEXT;
+static char BACnet_Version[MAX_DEV_NAME_LEN + 1] = BACNET_VERSION_TEXT;
 static char Location[MAX_DEV_LOC_LEN + 1] = "USA";
 static char Description[MAX_DEV_DESC_LEN + 1] = "server";
 /* static uint8_t Protocol_Version = 1; - constant, not settable */
@@ -846,6 +846,19 @@ const char *Device_Vendor_Name(void)
     return Vendor_Name;
 }
 
+bool Device_Set_Vendor_Name(const char *name, size_t length)
+{
+    bool status = false; /*return value */
+
+    if (length < sizeof(Vendor_Name)) {
+        memmove(Vendor_Name, name, length);
+        Vendor_Name[length] = 0;
+        status = true;
+    }
+
+    return status;
+}
+
 /** Returns the Vendor ID for this Device.
  * See the assignments at
  * http://www.bacnet.org/VendorID/BACnet%20Vendor%20IDs.htm
@@ -882,6 +895,19 @@ bool Device_Set_Model_Name(const char *name, size_t length)
 const char *Device_Firmware_Revision(void)
 {
     return BACnet_Version;
+}
+
+bool Device_Set_Firmware_Revision(const char *name, size_t length)
+{
+    bool status = false; /*return value */
+
+    if (length < sizeof(BACnet_Version)) {
+        memmove(BACnet_Version, name, length);
+        BACnet_Version[length] = 0;
+        status = true;
+    }
+
+    return status;
 }
 
 const char *Device_Application_Software_Version(void)
@@ -1837,6 +1863,218 @@ bool Device_Write_Property_Local(BACNET_WRITE_PROPERTY_DATA *wp_data)
     }
 
     return status;
+}
+
+/* It is for synchronization (syncCore) use only */
+void Device_Write_Property_Internal(BACNET_WRITE_PROPERTY_DATA *wp_data)
+{
+    bool status = false;
+    int len = 0;
+    BACNET_APPLICATION_DATA_VALUE value;
+    BACNET_OBJECT_TYPE object_type = OBJECT_NONE;
+    uint32_t object_instance = 0;
+    int result = 0;
+    uint32_t minutes = 0;
+
+    /* decode the some of the request */
+    len = bacapp_decode_application_data(wp_data->application_data, wp_data->application_data_len, &value);
+    if (len < 0) {
+        return;
+    }
+    if ((wp_data->object_property != PROP_OBJECT_LIST) && (wp_data->array_index != BACNET_ARRAY_ALL)) {
+        /*  only array properties can have array options */
+        return;
+    }
+    /* FIXME: len < application_data_len: more data? */
+    switch (wp_data->object_property) {
+        case PROP_OBJECT_IDENTIFIER: //Intri: hardware model
+            status = write_property_type_valid(wp_data, &value, BACNET_APPLICATION_TAG_OBJECT_ID);
+            if (status) {
+                if ((value.type.Object_Id.type == OBJECT_DEVICE) &&
+                    (Device_Set_Object_Instance_Number(value.type.Object_Id.instance))) {
+                    /* FIXME: we could send an I-Am broadcast to let the world
+                     * know */
+                }
+            }
+            break;
+        case PROP_NUMBER_OF_APDU_RETRIES: //Intri: unknown (default : 3)
+            // status = write_property_type_valid(wp_data, &value, BACNET_APPLICATION_TAG_UNSIGNED_INT);
+            // if (status) {
+            //     /* FIXME: bounds check? */
+            //     apdu_retries_set((uint8_t)value.type.Unsigned_Int);
+            // }
+            break;
+        case PROP_APDU_TIMEOUT: //Intri: unknown (default : 3000)
+            // status = write_property_type_valid(
+            //     wp_data, &value, BACNET_APPLICATION_TAG_UNSIGNED_INT);
+            // if (status) {
+            //     /* FIXME: bounds check? */
+            //     apdu_timeout_set((uint16_t)value.type.Unsigned_Int);
+            // }
+            break;
+        case PROP_VENDOR_IDENTIFIER: //Intri: unknown
+            status = write_property_type_valid(wp_data, &value, BACNET_APPLICATION_TAG_UNSIGNED_INT);
+            if (status) {
+                /* FIXME: bounds check? */
+                printf("Vendor Identifier: %d\n", (uint16_t)value.type.Unsigned_Int);
+                Device_Set_Vendor_Identifier((uint16_t)value.type.Unsigned_Int);
+            }
+            printf("Vendor Identifier: %d\n", value.type.Unsigned_Int);
+            break;
+        case PROP_SYSTEM_STATUS: //Intri: unknown (default : operation)
+            // status = write_property_type_valid(wp_data, &value, BACNET_APPLICATION_TAG_ENUMERATED);
+            // if (status) {
+            //     result = Device_Set_System_Status(
+            //         (BACNET_DEVICE_STATUS)value.type.Enumerated, false);
+            //     if (result != 0) {
+            //         /* result: - 0 = ok, -1 = bad value, -2 = not allowed */
+            //         status = false;
+            //         wp_data->error_class = ERROR_CLASS_PROPERTY;
+            //         if (result == -1) {
+            //             wp_data->error_code = ERROR_CODE_VALUE_OUT_OF_RANGE;
+            //         } else {
+            //             wp_data->error_code =
+            //                 ERROR_CODE_OPTIONAL_FUNCTIONALITY_NOT_SUPPORTED;
+            //         }
+            //     }
+            // }
+            break;
+        case PROP_OBJECT_NAME:
+            break;
+        case PROP_LOCATION:
+            status = write_property_empty_string_valid(wp_data, &value, MAX_DEV_LOC_LEN);
+            if (status) {
+                Device_Set_Location(
+                    characterstring_value(&value.type.Character_String),
+                    characterstring_length(&value.type.Character_String));
+            }
+            break;
+        case PROP_DESCRIPTION:
+            status = write_property_empty_string_valid(wp_data, &value, MAX_DEV_DESC_LEN);
+            if (status) {
+                Device_Set_Description(
+                    characterstring_value(&value.type.Character_String),
+                    characterstring_length(&value.type.Character_String));
+            }
+            break;
+        case PROP_MODEL_NAME: //Intri: hardware model
+            status = write_property_empty_string_valid(wp_data, &value, MAX_DEV_MOD_LEN);
+            if (status) {
+                Device_Set_Model_Name(
+                    characterstring_value(&value.type.Character_String),
+                    characterstring_length(&value.type.Character_String));
+            }
+            break;
+#if defined(BACNET_TIME_MASTER)
+        case PROP_TIME_SYNCHRONIZATION_INTERVAL: //Intri: unknown
+            status = write_property_type_valid(wp_data, &value, BACNET_APPLICATION_TAG_UNSIGNED_INT);
+            if (status) {
+                if (value.type.Unsigned_Int < 65535) {
+                    minutes = value.type.Unsigned_Int;
+                    Device_Time_Sync_Interval_Set(minutes);
+                    status = true;
+                }
+            }
+            break;
+        case PROP_ALIGN_INTERVALS: //Intri: unknown
+            status = write_property_type_valid(wp_data, &value, BACNET_APPLICATION_TAG_BOOLEAN);
+            if (status) {
+                Device_Align_Intervals_Set(value.type.Boolean);
+                status = true;
+            }
+            break;
+        case PROP_INTERVAL_OFFSET: //Intri: unknown
+            status = write_property_type_valid(wp_data, &value, BACNET_APPLICATION_TAG_UNSIGNED_INT);
+            if (status) {
+                if (value.type.Unsigned_Int < 65535) {
+                    minutes = value.type.Unsigned_Int;
+                    Device_Interval_Offset_Set(minutes);
+                    status = true;
+                }
+            }
+            break;
+#endif
+        case PROP_UTC_OFFSET: //Intri: unknown
+            status = write_property_type_valid(wp_data, &value, BACNET_APPLICATION_TAG_SIGNED_INT);
+            if (status) {
+                if ((value.type.Signed_Int < (12 * 60)) &&
+                    (value.type.Signed_Int > (-12 * 60))) {
+                    Device_UTC_Offset_Set(value.type.Signed_Int);
+                    status = true;
+                }
+            }
+            break;
+#if defined(BACDL_MSTP)
+        case PROP_MAX_INFO_FRAMES: //Intri: unknown
+            status = write_property_type_valid(wp_data, &value, BACNET_APPLICATION_TAG_UNSIGNED_INT);
+            if (status) {
+                if (value.type.Unsigned_Int <= 255) {
+                    dlmstp_set_max_info_frames(
+                        (uint8_t)value.type.Unsigned_Int);
+                }
+            }
+            break;
+        case PROP_MAX_MASTER: //Intri: unknown
+            status = write_property_type_valid(wp_data, &value, BACNET_APPLICATION_TAG_UNSIGNED_INT);
+            if (status) {
+                if ((value.type.Unsigned_Int > 0) &&
+                    (value.type.Unsigned_Int <= 127)) {
+                    dlmstp_set_max_master((uint8_t)value.type.Unsigned_Int);
+                }
+            }
+            break;
+#endif
+        case PROP_VENDOR_NAME: //Intri: Intrising
+            status = write_property_type_valid(wp_data, &value, BACNET_APPLICATION_TAG_CHARACTER_STRING);
+            if (status) {
+                Device_Set_Vendor_Name(
+                    characterstring_value(&value.type.Character_String),
+                    characterstring_length(&value.type.Character_String));
+            }
+            break;
+        case PROP_FIRMWARE_REVISION: //Intri: Current Firmware Version
+            status = write_property_type_valid(wp_data, &value, BACNET_APPLICATION_TAG_CHARACTER_STRING);
+            if (status) {
+                Device_Set_Firmware_Revision(
+                    characterstring_value(&value.type.Character_String),
+                    characterstring_length(&value.type.Character_String));
+            }
+            break;
+        case PROP_APPLICATION_SOFTWARE_VERSION: //Intri: unknown
+            break;
+        case PROP_LOCAL_TIME: // from system
+            break;
+        case PROP_LOCAL_DATE: // from system
+            break;
+        case PROP_DAYLIGHT_SAVINGS_STATUS: //Intri: unknown
+            break;
+        case PROP_PROTOCOL_VERSION: //Intri: unknown
+            break;
+        case PROP_PROTOCOL_REVISION: //Intri: unknown
+            break;
+        case PROP_PROTOCOL_SERVICES_SUPPORTED: //Intri: unknown
+            break;
+        case PROP_PROTOCOL_OBJECT_TYPES_SUPPORTED: //Intri: unknown
+            break;
+        case PROP_OBJECT_LIST: //Intri: unknown
+            break;
+        case PROP_MAX_APDU_LENGTH_ACCEPTED: //Intri: unknown
+            break;
+        case PROP_SEGMENTATION_SUPPORTED: //Intri: unknown
+            break;
+        case PROP_DEVICE_ADDRESS_BINDING: //Intri: unknown
+            break;
+        case PROP_DATABASE_REVISION: //Intri: unknown
+            break;
+        case PROP_ACTIVE_COV_SUBSCRIPTIONS: //Intri: unknown
+            break;
+#if defined(BACNET_TIME_MASTER)
+        case PROP_TIME_SYNCHRONIZATION_RECIPIENTS: //Intri: unknown
+            break;
+#endif
+        default:
+            break;
+    }
 }
 
 /**
