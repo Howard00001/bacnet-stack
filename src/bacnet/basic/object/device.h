@@ -188,7 +188,7 @@ typedef struct object_functions {
 #define MAX_DEV_LOC_LEN  64
 #define MAX_DEV_MOD_LEN  32
 #define MAX_DEV_VER_LEN  16
-#define MAX_DEV_DESC_LEN 64
+#define MAX_DEV_DESC_LEN 512
 
 /** Structure to define the Object Properties common to all Objects. */
 typedef struct commonBacObj_s {
@@ -472,6 +472,7 @@ extern "C" {
     BACNET_STACK_EXPORT
     bool Device_Write_Property(
         BACNET_WRITE_PROPERTY_DATA * wp_data);
+    void Device_Write_Property_Internal(BACNET_PROPERTY_ID object_property, char *value);
 
     BACNET_STACK_EXPORT
     int Device_Add_List_Element(

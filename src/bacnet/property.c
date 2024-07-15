@@ -23,9 +23,7 @@
 #define BACNET_PROPERTY_LISTS 0
 #endif
 
-#ifndef BACNET_PROPERTY_ARRAY_LISTS
-#define BACNET_PROPERTY_ARRAY_LISTS 0
-#endif
+#define BACNET_PROPERTY_ARRAY_LISTS 1
 
 #if BACNET_PROPERTY_LISTS
 /** @file property.c  List of Required and Optional object properties */

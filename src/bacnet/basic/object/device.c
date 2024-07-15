@@ -1868,9 +1868,11 @@ bool Device_Write_Property_Local(BACNET_WRITE_PROPERTY_DATA *wp_data)
 /* It is for synchronization (syncCore) use only */
 void Device_Write_Property_Internal(BACNET_PROPERTY_ID object_property, char *value)
 {
+    BACNET_CHARACTER_STRING char_string;
+    uint16_t uint_val = (uint16_t)strtoul(value, NULL, 10);
+    int16_t int_val = (int16_t)strtoul(value, NULL, 10);
     switch (object_property) {
         case PROP_OBJECT_NAME: //Intri: hardware model
-            BACNET_CHARACTER_STRING char_string;
             characterstring_init(&char_string, 0, value, strlen(value));
             Device_Set_Object_Name(&char_string);
             break;
@@ -1881,7 +1883,6 @@ void Device_Write_Property_Internal(BACNET_PROPERTY_ID object_property, char *va
             // apdu_timeout_set((uint16_t)value.type.Unsigned_Int);
             break;
         case PROP_VENDOR_IDENTIFIER: //Intri: unknown
-            uint16_t uint_val = (uint16_t)strtoul(value, NULL, 10);
             Device_Set_Vendor_Identifier(uint_val);
             break;
         case PROP_SYSTEM_STATUS: //Intri: unknown (default : operation)
@@ -1926,7 +1927,6 @@ void Device_Write_Property_Internal(BACNET_PROPERTY_ID object_property, char *va
             break;
 #endif
         case PROP_UTC_OFFSET: //Intri: unknown
-            int16_t int_val = (int16_t)strtoul(value, NULL, 10);
             Device_UTC_Offset_Set(int_val);
             break;
 #if defined(BACDL_MSTP)
