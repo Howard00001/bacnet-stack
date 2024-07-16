@@ -1,9 +1,0 @@
-branches:
-    - label: enhancement
-      prefix: feature/
-    - label: bug
-      prefix: bugfix/
-    - label: documentation
-      prefix: chore/
-    - label: '*'
-      prefix: issues/
