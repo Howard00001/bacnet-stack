@@ -11,16 +11,10 @@ CROSS_LIBC="$(realpath $(dirname ${CROSS_CC})/..)/${CROSS}/libc"
 
 # Directories
 START_DIR="${PWD}"
-BUILD_DIR="${START_DIR}/build"
-FINAL_DIR="${START_DIR}/final"
 INCLUDE_DIR="${START_DIR}/src"  # Adjust this path to your include directory if different
 
 # Clean previous builds
-rm -rf "${BUILD_DIR}" "${FINAL_DIR}"
-
-# Create necessary directories
-mkdir -p "${BUILD_DIR}"
-mkdir -p "${FINAL_DIR}/usr/bin"
+make clean
 
 # Build the BACnet server
 make \
@@ -28,6 +22,4 @@ make \
     CXX="${CROSS_CXX}" \
     CFLAGS="${CROSS_CC_FLAG} -I${INCLUDE_DIR}" \
     LDFLAGS="${CROSS_CXX_FLAG}" \
-    BUILD_DIR="${BUILD_DIR}" \
-    FINAL_DIR="${FINAL_DIR}" \
     server
